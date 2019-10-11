@@ -1,0 +1,7 @@
+BasedOnStyle: llvm
+IndentWidth: 8
+UseTab: ForIndentation
+Standard: Cpp03
+AccessModifierOffset: -8
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false

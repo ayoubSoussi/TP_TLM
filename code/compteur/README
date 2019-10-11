@@ -1,0 +1,5 @@
+Pour utiliser: positionner la variable d'environnement SYSTEMCROOT pour qu'elle pointe sur le repertoire ou vous avez installe systemc (repertoire devant contenir les repertoires config, include, lib et src notamment).
+
+Taper make, cela compile tous les .cpp du repertoire courant.
+
+Jerome Cornet
