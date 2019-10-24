@@ -1,0 +1,709 @@
+/* -*- c++ -*-
+
+   C++ Interval set template with boolean operations.
+
+   This program is free software: you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License
+   as published by the Free Software Foundation, either version 3 of
+   the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this program.  If not, see
+   <http://www.gnu.org/licenses/>.
+
+   (c) 2008 Alexandre Becoulet <alexandre.becoulet@free.fr>
+
+*/
+
+#ifndef DPP_INTERVAL_SET_HH_
+#define DPP_INTERVAL_SET_HH_
+
+#include <cassert>
+#include <vector>
+#include <stdexcept>
+#include <limits>
+
+namespace dpp {
+
+  template <typename X>
+  struct interval_bound;
+
+  template <typename X>
+  struct interval_bound_inclusive;
+
+  template <typename X>
+  struct interval_bound_exclusive;
+
+  template <typename X>
+  class interval_scalar_limits;
+
+  template <typename X, class Bound = interval_bound<X> >
+  class interval;
+
+  template <typename X, class Bound = interval_bound<X>,
+	    class Limits = interval_scalar_limits<X> >
+  class interval_set;
+
+//////////////////////////////////////////////////////////////////////
+//	interval bound classes
+//////////////////////////////////////////////////////////////////////
+
+  /** Default interval bound class.
+
+      Handle both inclusive and exclusive interval bounds.
+  */
+
+  template <typename X>
+  class interval_bound
+  {
+    template <typename, class> friend class interval;
+    template <typename, class, class> friend class interval_set;
+
+    X _bound;
+    bool _inclusive;
+
+    interval_bound()
+    {
+    }
+
+    interval_bound(const X bound, bool inclusive)
+      : _bound(bound),
+	_inclusive(inclusive)
+    {
+    }
+
+    X bound() const
+    {
+      return _bound;
+    }
+
+    void set_bound(X b)
+    {
+      _bound = b;
+    }
+
+    bool inclusive() const
+    {
+      return _inclusive;
+    }
+
+    void set_inclusive(bool i)
+    {
+      _inclusive = i;
+    }
+
+    bool operator==(const interval_bound &b) const
+    {
+      return _bound == b._bound && _inclusive == b._inclusive;
+    }
+  };
+
+  /** Inclusive only interval bound class. */
+
+  template <typename X>
+  class interval_bound_inclusive
+  {
+    template <typename, class> friend class interval;
+    template <typename, class, class> friend class interval_set;
+
+    X _bound;
+
+    interval_bound_inclusive()
+    {
+    }
+
+    interval_bound_inclusive(const X bound, bool inclusive)
+      : _bound(bound)
+    {
+    }
+
+    X bound() const
+    {
+      return _bound;
+    }
+
+    void set_bound(X b)
+    {
+      _bound = b;
+    }
+
+    bool inclusive() const
+    {
+      return true;
+    }
+
+    void set_inclusive(bool i)
+    {
+    }
+
+    bool operator==(const interval_bound_inclusive &b) const
+    {
+      return _bound == b._bound;
+    }
+  };
+
+  /** Exclusive only interval bound class. */
+
+  template <typename X>
+  class interval_bound_exclusive
+  {
+    template <typename, class> friend class interval;
+    template <typename, class, class> friend class interval_set;
+
+    X _bound;
+
+    interval_bound_exclusive()
+    {
+    }
+
+    interval_bound_exclusive(X bound, bool inclusive)
+      : _bound(bound)
+    {
+    }
+
+    X bound() const
+    {
+      return _bound;
+    }
+
+    void set_bound(X b)
+    {
+      _bound = b;
+    }
+
+    bool inclusive() const
+    {
+      return false;
+    }
+
+    void set_inclusive(bool i)
+    {
+    }
+
+    bool operator==(const interval_bound_exclusive &b) const
+    {
+      return _bound == b._bound;
+    }
+  };
+
+//////////////////////////////////////////////////////////////////////
+//	interval bound pair class
+//////////////////////////////////////////////////////////////////////
+
+  /** Interval limits class for standard scalar types. */
+
+  template <typename X>
+  class interval_scalar_limits
+  {
+  public:
+    /** Get interval maximum value */
+    static X upper()
+    {
+      if (!std::numeric_limits<X>::is_integer && std::numeric_limits<X>::has_infinity)
+	return std::numeric_limits<X>::infinity();
+      else
+	return std::numeric_limits<X>::max();
+    }
+
+    /** Get interval minimum value */
+    static X lower()
+    {
+      if (std::numeric_limits<X>::is_integer)
+	return std::numeric_limits<X>::min();
+      else
+	return -upper();
+    }
+  };
+
+//////////////////////////////////////////////////////////////////////
+//	interval bound pair class
+//////////////////////////////////////////////////////////////////////
+
+  /** Interval class.
+
+      This class store the low and high bounds of an interval
+  */
+
+  template <typename X, class Bound>
+  class interval
+  {
+    template <typename, class, class> friend class interval_set;
+
+    Bound _low;
+    Bound _high;
+
+  public:
+
+    interval()
+    {
+    }
+
+    /** Create a new [low, high] interval */
+    interval(const X low, const X high)
+      : _low(low, true),
+	_high(high, true)
+    {
+      assert(low < high || low == high);
+    }
+
+    /** Create a new {low, high} interval with specified inclusivity */
+    interval(const X low, bool low_inclusive,
+	     const X high, bool high_inclusive)
+      : _low(low, low_inclusive),
+	_high(high, high_inclusive)	
+    {
+      assert(low < high || (low == high && low_inclusive && high_inclusive));
+    }
+
+    /** Get low bound value */
+    X low_bound() const
+    {
+      return _low.bound();
+    }
+
+    /** Get high bound value */
+    X high_bound() const
+    {
+      return _high.bound();
+    }
+
+    /** Test if low bound is inclusive */
+    bool low_inclusive() const
+    {
+      return _low.inclusive();
+    }
+
+    /** Test if high bound is inclusive */
+    bool high_inclusive() const
+    {
+      return _high.inclusive();
+    }
+
+    /** Test if specified value is included in range */
+    bool contains(const X a) const
+    {
+      if (a == _low.bound())
+	return _low.inclusive();
+      else if (a == _high.bound())
+	return _high.inclusive();
+      else
+	return (!(a < _low.bound()) && a < _high.bound());
+    }
+
+    /** Test if intervals are equal */
+    bool operator==(const interval &i) const
+    {
+      return _low == i._low && _high == i._high;
+    }
+
+  };
+
+//////////////////////////////////////////////////////////////////////
+//	interval class
+//////////////////////////////////////////////////////////////////////
+
+  /** Interval set class 
+
+  This class store interval set and provides union, intersection,
+  complement and dichotomic value inclusion test operations.
+  */
+
+  template <typename X, class Bound, class Limits>
+  class interval_set
+  {
+  public:
+
+    /** Interval type */
+    typedef interval<X, Bound> interval_type;
+
+  private:
+    typedef std::vector<interval_type> set_container;
+
+  public:
+    /** Value type */
+    typedef X value_type;
+    /** Bound pair iterator */
+    typedef typename set_container::iterator iterator;
+    /** Bound pair const iterator */
+    typedef typename set_container::const_iterator const_iterator;
+    /** Interval limits class */
+    typedef Limits limits_type;
+
+  private:
+
+    static void union_glob(const set_container &a, unsigned int &i,
+			   const set_container &b, unsigned int &j,
+			   set_container &c, unsigned int &k)
+    {
+      // skip all included intervals
+      while (j < b.size() && b[j]._high.bound() < c[k]._high.bound())
+	j++;
+
+      if (j < b.size())
+	{
+	  // if interval end equal to next interval start
+	  if (((c[k]._high.bound() == b[j]._low.bound())
+	       && (c[k]._high.inclusive() || b[j]._low.inclusive()))
+	  // or interval end greater than next interval start
+	      || (b[j]._low.bound() < c[k]._high.bound()))
+	    {
+	      // join intervals
+	      c[k]._high = b[j++]._high;
+	      // terminal recursion
+	      return union_glob(b, j, a, i, c, k);
+	    }
+	}
+    }
+
+    static interval_set union_(const set_container &a, const set_container &b)
+    {
+      interval_set res;
+      set_container &c = res._set;
+
+      unsigned int i, j, k;
+
+      c.resize(a.size() + b.size());
+
+      for (i = j = k = 0; i < a.size() && j < b.size(); k++)
+	{
+ 	  if (a[i]._low.bound() == b[j]._low.bound())
+	    {
+	      c[k] = a[i];
+	      c[k]._low.set_inclusive(a[i]._low.inclusive() | b[j]._low.inclusive());
+	      i++;
+	      union_glob(a, i, b, j, c, k);
+	    }
+	  else if (a[i]._low.bound() < b[j]._low.bound())
+	    {
+	      c[k] = a[i++];
+	      union_glob(a, i, b, j, c, k);
+	    }
+	  else // if (a[i]._low._bound > b[j]._low._bound)
+	    {
+	      c[k] = b[j++];
+	      union_glob(b, j, a, i, c, k);
+	    }
+	}
+
+      for (; i < a.size(); i++, k++)
+	c[k] = a[i];
+
+      for (; j < b.size(); j++, k++)
+	c[k] = b[j];
+
+      res._set.resize(k);
+
+      return res;
+    }
+
+    static bool pair_intersect(const interval_type &a, const interval_type &b, interval_type &r)
+    {
+      if (b._low.bound() < a._low.bound())
+	r._low = a._low;
+      else // if (a._low.bound() <= b._low.bound())
+	{
+	  r._low = b._low;
+	  if (!a._low.inclusive() && a._low.bound() == b._low.bound())
+	    r._low.set_inclusive(false);
+	}
+
+      if (a._high.bound() < b._high.bound())
+	r._high = a._high;
+      else // if (b._high.bound() <= a._high.bound())
+	{
+	  r._high = b._high;
+	  if (!a._high.inclusive() && a._high.bound() == b._high.bound())
+	    r._high.set_inclusive(false);
+	}
+
+      if (r._high.bound() == r._low.bound())
+	return r._low.inclusive() && r._high.inclusive();
+      else
+	return(r._low.bound() < r._high.bound());
+    }
+
+    static interval_set intersection(const set_container &a, const set_container &b)
+    {
+      interval_set res;
+      set_container &c = res._set;
+
+      unsigned int i, j, k;
+
+      c.resize(a.size() + b.size());
+
+      for (i = j = k = 0; i < a.size() && j < b.size(); )
+	{
+	  if (b[j]._high.bound() < a[i]._low.bound())
+	    while (j < b.size() && b[j]._high.bound() < a[i]._low.bound())
+	      j++;
+	  else if (a[i]._high.bound() < b[j]._low.bound())
+	    while (i < a.size() && a[i]._high.bound() < b[j]._low.bound())
+	      i++;
+	  else 
+	    {
+	      if (pair_intersect(a[i], b[j], c[k]))
+		k++;
+
+	      if (a[i]._high.bound() == b[j]._high.bound())
+		j++, i++;
+	      else if (a[i]._high.bound() < b[j]._high.bound())
+		i++;
+	      else
+		j++;
+	    }
+	}
+
+      res._set.resize(k);
+
+      return res;
+    }
+
+    static interval_set complement(const set_container &a)
+    {
+      if (a.empty())
+	return interval_set(true);
+
+      unsigned int i, j;
+      interval_set res;
+      set_container &r = res._set;
+
+      if (a[0]._low.bound() == limits_type::lower() && a[0]._low.inclusive())
+	{
+	  r.resize(a.size());
+	  r[0]._low.set_bound(a[0]._high.bound());
+	  r[0]._low.set_inclusive(!a[0]._high.inclusive());
+	  j = 1;
+	}
+      else
+	{
+	  r.resize(a.size() + 1);
+	  r[0]._low.set_bound(limits_type::lower());
+	  r[0]._low.set_inclusive(true);
+	  j = 0;
+	}
+
+      for (i = 0; i < r.size() - 1; i++, j++)
+	{
+	  r[i]._high.set_bound(a[j]._low.bound());
+	  r[i]._high.set_inclusive(!a[j]._low.inclusive());
+	  r[i+1]._low.set_bound(a[j]._high.bound());
+	  r[i+1]._low.set_inclusive(!a[j]._high.inclusive());
+	}
+
+      assert(j >= 1);
+
+      if (a[j-1]._high.bound() == limits_type::upper() && a[j-1]._high.inclusive())
+	{
+	  r.pop_back();
+	}
+      else
+	{
+	  r[i]._high.set_bound(limits_type::upper());
+	  r[i]._high.set_inclusive(true);
+	}
+
+      return res;
+    }
+
+    unsigned int dicho(const X a) const
+    {
+      unsigned int min_idx = 0;
+      unsigned int max_idx = _set.size() + 1;
+
+      // dichotomic search
+      while (max_idx - min_idx > 1)
+	{
+	  unsigned int p = (max_idx + min_idx) / 2;
+
+	  if (a < _set[p]._low.bound())
+	    max_idx = p;
+	  else
+	    min_idx = p;
+	}
+
+      return min_idx;
+    }
+
+  public:
+
+    /** Create an empty interval set */
+    interval_set()
+    {
+    }
+
+    /** Create a full interval set */
+    interval_set(bool full)
+    {
+      if (full)
+	_set.push_back(interval_type(limits_type::lower(),
+				     limits_type::upper()));
+    }
+
+    /** Create an interval set including values in range [low, high] */
+    interval_set(const interval_type &i)
+    {
+      _set.push_back(i);
+    }
+
+    /** Create an interval set including values in range [low, high] */
+    interval_set(const X low, const X high)
+    {
+      _set.push_back(interval_type(low, high));
+    }
+
+    /** Create an interval set including values in range {low, high} with given inclusivity */
+    interval_set(const X low, bool low_inclusive,
+		 const X high, bool high_inclusive)
+    {
+      _set.push_back(interval_type(low, low_inclusive, high, high_inclusive));
+    }
+
+    /** Reset to empty interval */
+    void clear()
+    {
+      _set.clear();
+    }
+
+    /** Test if interval set is empty */
+    bool empty()
+    {
+      return _set.empty();
+    }
+
+    /** Test if interval set is full */
+    bool full()
+    {
+      return (!_set.empty()
+	      && _set.back()._low.bound() == limits_type::lower()
+	      && _set.back()._high.bound() == limits_type::upper());
+    }
+
+    /** Return a new interval set being the union of the two intervals */
+    interval_set operator|(const interval_set &i) const
+    {
+      return union_(_set, i._set);
+    }
+
+    /** Replace by union with given interval set */
+    interval_set & operator|=(const interval_set &i)
+    {
+      return *this = *this | i; // FIXME write optimized version
+    }
+
+    /** Replace by union with given interval */
+    interval_set & operator|=(const interval_type &i)
+    {
+      return *this = *this | interval_set(i); // FIXME write optimized version
+    }
+
+    /** Return a new interval set being the intersection of the two intervals */
+    interval_set operator&(const interval_set &i) const
+    {
+      return intersection(_set, i._set);
+    }
+
+    /** Replace by intersection with given interval */
+    interval_set & operator&=(const interval_set &i)
+    {
+      return *this = *this & i; // FIXME write optimized version
+    }
+
+    /** Get the complementary interval set */
+    interval_set operator~() const
+    {
+      return complement(_set);
+    }
+
+    /** Return a new interval set being the exclusive or of the two intervals */
+    interval_set operator^(const interval_set &i) const
+    {
+      return (*this & ~i) | (~*this & i);
+    }
+
+    /** Replace by exclusive or with given interval set */
+    interval_set & operator^=(const interval_set &i)
+    {
+      return *this = *this ^ i;
+    }
+
+    /** Get interval including specified value. Throw if no matching
+	interval available in set. */
+    interval_type get_interval(const X a) const
+    {
+      unsigned int p = dicho(a);
+
+      if (!_set[p].contains(a))
+	throw std::out_of_range();
+
+      return _set[p];
+    }
+
+    /** Test if specified value is in interval set */
+    bool contains(const X a) const
+    {
+      return _set[dicho(a)].contains(a);
+    }
+
+    /** Test if specified interval set is included in interval set */
+    bool contains(const interval_set &i) const
+    {
+      return (i & *this) == i; // FIXME write optimized version
+    }
+
+    /** Test if specified value is in interval set */
+    bool operator[](const X a) const
+    {
+      return contains(a);
+    }
+
+    /** Test if interval sets are equals */
+    bool operator==(const interval_set &i) const
+    {
+      if (_set.size() != i._set.size())
+	return false;
+
+      for (unsigned int j = 0; j < _set.size(); j++)
+	if (!(_set[j] == i._set[j]))
+	  return false;
+
+      return true;
+    }
+
+    /** Get intervals container begin iterator */
+    iterator begin()
+    {
+      return _set.begin();
+    }
+
+    /** Get intervals container end iterator */
+    iterator end()
+    {
+      return _set.end();
+    }
+
+    /** Get intervals container begin const iterator */
+    const_iterator begin() const
+    {
+      return _set.begin();
+    }
+
+    /** Get intervals container end const iterator */
+    const_iterator end() const
+    {
+      return _set.end();
+    }
+
+  private:
+
+    set_container _set;
+  };
+
+}
+
+#endif
+

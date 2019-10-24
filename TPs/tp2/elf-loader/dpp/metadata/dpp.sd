@@ -1,0 +1,11 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:dpp',
+	header_files = [
+	'../source/include/dpp_placeholder.h',
+	],
+)

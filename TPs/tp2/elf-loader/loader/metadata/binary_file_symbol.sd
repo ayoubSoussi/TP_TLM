@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:binary_file_symbol',
+	classname = 'soclib::common::BinaryFileSymbol',
+	header_files = ['../include/binary_file_symbol.h',],
+	implementation_files = ['../src/binary_file_symbol.cpp',
+							],
+)

@@ -1,0 +1,28 @@
+MEMORY 
+{
+   bram : ORIGIN = 0x80000000, LENGTH = 0x00020000
+}
+
+SECTIONS
+{
+   .all : /* code, initialized data, and small bss */
+       {
+          boot.o(.text)
+          *(.text)
+          _etext = ALIGN(4);
+          *(.rodata)
+          *(.data)
+          *(.sdata)
+          _edata = ALIGN(4);
+          *(.sbss)
+        } > bram
+
+   .bss : /* blank static storage */
+        {
+          *(.bss)
+          _end = ALIGN(4);
+        } > bram
+
+   /* Stack. We have to make sure it's not within the video memory */
+   _stack_top  = 0x8001FFFC;
+}

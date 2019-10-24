@@ -1,0 +1,1 @@
+This must be compiled with the same -std=c++11 flag than SystemC (or without the same flags)

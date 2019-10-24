@@ -1,0 +1,23 @@
+// -*- c++ -*-
+
+#ifndef DPP_FOREACH_HH_
+#define DPP_FOREACH_HH_
+
+#ifdef __GNUC__
+
+#define FOREACH(var, cont)			\
+  for (typeof((cont).begin()) var = (cont).begin(); \
+       var !=(cont).end(); \
+       ++var)
+
+// this version prefetch next item to allow current item deletion on some container
+#define FOREACH2(var, cont)			\
+  for (typeof((cont).begin()) var##__next = (cont).begin(), var; \
+       (var = var##__next++) !=(cont).end(); )
+
+#else
+# error typeof not available
+#endif
+
+#endif
+

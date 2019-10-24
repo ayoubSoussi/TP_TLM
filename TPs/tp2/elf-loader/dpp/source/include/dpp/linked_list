@@ -1,0 +1,835 @@
+/* -*- c++ -*-
+
+   C++ Internal storage linked list container.
+
+   This program is free software: you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License
+   as published by the Free Software Foundation, either version 3 of
+   the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this program.  If not, see
+   <http://www.gnu.org/licenses/>.
+
+   (c) 2008 Alexandre Becoulet <alexandre.becoulet@free.fr>
+
+*/
+
+#ifndef DPP_LINKED_LIST_HH_
+#define DPP_LINKED_LIST_HH_
+
+#include <iterator>
+#include <cassert>
+#include <unistd.h>
+
+namespace dpp {
+
+class linked_list_node;
+
+template <class X, int id = -1, bool smart = false>
+class linked_list_item;
+
+template <class X, int id = -1, bool smart = false>
+class linked_list;
+
+template <class X, int id, class Xnode, class Xconstvalue, bool forward, bool smart>
+class linked_list_iterator;
+
+//////////////////////////////////////////////////////////////////////
+//	linked_list node class
+//////////////////////////////////////////////////////////////////////
+
+/** Linked list internal node class. Do not use directly */
+
+class linked_list_node
+{
+  template <class, int, bool> friend class linked_list;
+  template <class, int, bool> friend class linked_list_item;
+  template <class, int, class, class, bool, bool> friend class linked_list_iterator;
+
+  linked_list_node *m_next;
+  linked_list_node *m_prev;
+
+  linked_list_node(linked_list_node *next, linked_list_node *prev)
+    : m_next(next),
+      m_prev(prev)
+  {
+  }
+
+  linked_list_node()
+  {
+  }
+
+  linked_list_node(linked_list_node &l)
+    : m_next(l.m_next),
+      m_prev(l.m_prev)
+  {
+  }
+
+};
+
+//////////////////////////////////////////////////////////////////////
+//	linked_list iterator class
+//////////////////////////////////////////////////////////////////////
+
+/** Linked list iterator class */
+
+template <class X, int id, class Xnode, class Xconstvalue, bool forward, bool smart>
+class linked_list_iterator
+{
+  template <class, int, bool> friend class linked_list;
+  template <class, int, bool> friend class linked_list_item;
+
+  linked_list_iterator(Xnode *i)
+    : m_item(i)
+  {
+  }
+
+  Xnode *m_item;
+
+public:
+
+  typedef linked_list_item<X, id, smart> item_type;
+  typedef X value_type;
+  typedef X & reference;
+  typedef X * pointer;
+  typedef ssize_t difference_type;
+  typedef std::bidirectional_iterator_tag iterator_category;
+
+  linked_list_iterator(const linked_list_iterator &i)
+    : m_item(i.m_item)
+  {
+  }
+
+  linked_list_iterator()
+  {
+  }
+
+  linked_list_iterator & operator++()
+  {
+    assert(m_item->m_next || "iterator points to orphan item");
+    m_item = forward ? m_item->m_next : m_item->m_prev;
+    return *this;
+  }
+
+  linked_list_iterator operator++(int)
+  {
+    assert(m_item->m_next || "iterator points to orphan item");
+    linked_list_iterator tmp = *this;
+    m_item = forward ? m_item->m_next : m_item->m_prev;
+    return tmp;
+  }
+
+  linked_list_iterator & operator--()
+  {
+    assert(m_item->m_next || "iterator points to orphan item");
+    m_item = forward ? m_item->m_prev : m_item->m_next;
+    return *this;
+  }
+
+  linked_list_iterator operator--(int)
+  {
+    assert(m_item->m_next || "iterator points to orphan item");
+    linked_list_iterator tmp = *this;
+    m_item = forward ? m_item->m_prev : m_item->m_next;
+    return tmp;
+  }
+
+  Xconstvalue & operator*() const
+  {
+    return static_cast<Xconstvalue &>(static_cast<item_type &>(*m_item));
+  }
+
+  Xconstvalue * operator->() const
+  {
+    return static_cast<Xconstvalue *>(static_cast<item_type *>(m_item));
+  }
+
+  bool operator==(const linked_list_iterator &i) const
+  {
+    return m_item == i.m_item;
+  }
+
+  bool operator!=(const linked_list_iterator &i) const
+  {
+    return m_item != i.m_item;
+  }
+
+};
+
+//////////////////////////////////////////////////////////////////////
+//	linked_list container class
+//////////////////////////////////////////////////////////////////////
+
+/** Linked list container class.
+
+Items can be part of multiple lists with different predefined ids.
+
+Linked list can be used in smart mode. Smart lists will automatically
+remove items from other lists when inserting in a new list. Non-smart
+list will raise false assertion if non-orphan items are used in the
+wrong place.
+
+*/
+
+template <class X, int id, bool smart>
+class linked_list
+{
+  template <class, int, bool> friend class linked_list_item;
+
+  typedef bool _predicate(const X &a, const X &b);
+
+public:
+  /** Associated list item type */
+  typedef linked_list_item<X, id, smart> item_type;
+
+  typedef linked_list_iterator<X, id, linked_list_node, X, true, smart> iterator;
+  typedef linked_list_iterator<X, id, const linked_list_node, const X, true, smart> const_iterator;
+
+  typedef linked_list_iterator<X, id, linked_list_node, X, false, smart> reverse_iterator;
+  typedef linked_list_iterator<X, id, const linked_list_node, const X, false, smart> const_reverse_iterator;
+
+  typedef X value_type;
+  typedef X & reference;
+  typedef const X & const_reference;
+  typedef X * pointer;
+  typedef const X * const_pointer;
+  typedef size_t size_type;
+  typedef ssize_t difference_type;
+
+private:
+
+  void _empty()
+  {
+    m_root.m_next = m_root.m_prev = &m_root;
+  }
+
+  static void _insert_post(linked_list_node *a, item_type *b)
+  {
+    b->_check_orphan();
+    b->m_prev = a;
+    a->m_next->m_prev = b;
+    b->m_next = a->m_next;
+    a->m_next = b;
+  }
+
+  static void _insert_pre(linked_list_node *a, item_type *b)
+  {
+    b->_check_orphan();
+    b->m_next = a;
+    a->m_prev->m_next = b;
+    b->m_prev = a->m_prev;
+    a->m_prev = b;
+  }
+
+  static void _remove(item_type *pos)
+  {
+    pos->_check_not_orphan();
+    pos->m_prev->m_next = pos->m_next;
+    pos->m_next->m_prev = pos->m_prev;
+    pos->_set_orphan();
+  }
+
+  static void _swap(item_type *a, item_type *b)
+  {
+    a->m_next->m_prev = a->m_prev->m_next = b;
+    b->m_next->m_prev = b->m_prev->m_next = a;
+    std::swap(a->m_prev, b->m_prev);
+    std::swap(a->m_next, b->m_next);
+  }
+
+  static void _replace(item_type *out, item_type *in)
+  {
+    if (out == in)
+      return;
+    out->_check_not_orphan();
+    in->_check_orphan();
+    out->m_prev->m_next = out->m_next->m_prev = in;
+    in->m_prev = out->m_prev;
+    in->m_next = out->m_next;
+    out->_set_orphan();
+  }
+
+  // rebuild from a null terminated singly list
+  void _rebuild(linked_list_node *list)
+  {
+    linked_list_node *prev;
+    m_root.m_next = list;
+
+    for (prev = &m_root; list; list = list->m_next)
+      {
+	list->m_prev = prev;
+	prev = list;
+      }
+
+    prev->m_next = &m_root;
+    m_root.m_prev = prev;
+  }
+
+  // default sort predicate
+  static bool _default_predicate(const X &a, const X &b)
+  {
+    return a < b;
+  }
+
+  // sublist merging function
+  static linked_list_node * _merge(linked_list_node *a, linked_list_node *b, _predicate *func)
+  {
+    linked_list_node *first, *last;
+
+    /* choose list head */
+    if (func(static_cast<X&>(static_cast<item_type &>(*a)),
+	     static_cast<X&>(static_cast<item_type &>(*b))))
+      a = (last = first = a)->m_next;
+    else
+      b = (last = first = b)->m_next;
+
+    /* merge lists */
+    while (a && b)
+      if (func(static_cast<X&>(static_cast<item_type &>(*a)),
+	       static_cast<X&>(static_cast<item_type &>(*b))))
+	a = (last = last->m_next = a)->m_next;
+      else
+	b = (last = last->m_next = b)->m_next;
+
+    last->m_next = a ? a : b;
+
+    return first;
+  }
+
+  linked_list(const linked_list &l);
+  linked_list & operator=(const linked_list &);
+
+  linked_list_node m_root;
+
+public:
+
+  /** Empty list constructor */
+  linked_list()
+    : m_root(&m_root, &m_root)
+  {
+  }
+
+  /** list destructor */
+  ~linked_list()
+  {
+    for (linked_list_node *i = m_root.m_prev; i != &m_root; i = i->m_prev)
+      static_cast<item_type*>(i)->_set_orphan();
+  }
+
+  /** list iterator constructor */
+  template <class input_iterator>
+  linked_list(input_iterator first, input_iterator last)
+    : m_root(&m_root, &m_root)
+  {
+    for (input_iterator i = first; i != last; i++)
+      _insert_pre(&m_root, &*i);
+  }
+
+  /** Push an item in front of this list */
+  void push_front(X &i)
+  {
+    _insert_post(&m_root, static_cast<item_type*>(&i));
+  }
+
+  /** Push an item at the end of this list */
+  void push_back(X &i)
+  {
+    _insert_pre(&m_root, static_cast<item_type*>(&i));
+  }
+
+  /** Remove first item from this list */
+  void pop_front()
+  {
+    _remove(static_cast<item_type*>(m_root.m_next));
+  }
+
+  /** Remove last item from this list */
+  void pop_back()
+  {
+    _remove(static_cast<item_type*>(m_root.m_prev));
+  }
+
+  /** Insert an item at specified position in this list */
+  iterator insert(const iterator &pos, X &i)
+  {
+    item_type *li = static_cast<item_type*>(&i);
+    _insert_pre(pos.m_item, li);
+    return iterator(li);
+  }
+
+  /** Insert multiple items at specified position in this list */
+  template <class input_iterator>
+  iterator insert(const iterator &pos, input_iterator first, input_iterator last)
+  {
+    for (input_iterator i = first; i != last; i++)
+      _insert_pre(pos.m_item, &*i);
+    return iterator(static_cast<item_type*>(&*first));
+  }
+
+  /** Remove item at specified position in this list */
+  iterator erase(iterator pos)
+  {
+    linked_list_node *next = pos.m_item->m_next;
+    _remove(static_cast<item_type*>(pos.m_item));
+    return iterator(static_cast<item_type*>(next));
+  }
+
+  /** Remove items between specified positions in this list */
+  iterator erase(iterator first, iterator last)
+  {
+    item_type *f = static_cast<item_type*>(&*first);
+    item_type *l = static_cast<item_type*>(&*last);
+
+    f->m_prev->m_next = l;
+
+    for (item_type *i = l->m_prev; i != f->m_prev; i = i->m_prev)
+      i->_set_orphan();
+
+    l->m_prev = f->m_prev;
+
+    return iterator(l);
+  }
+
+  /** Swap lists contents */
+  void swap(linked_list &x)
+  {
+    _swap(&m_root, &x.m_root);
+  }
+
+  /** Remove all items from this list */
+  void clear()
+  {
+    for (linked_list_node *i = m_root.m_prev; i != &m_root; i = i->m_prev)
+      static_cast<item_type*>(i)->_set_orphan();
+
+    m_root.m_next = m_root.m_prev = &m_root;
+  }
+
+  /** Remove all items matching specified value from this list */
+  void remove(const X &v)
+  {
+    for (iterator i = begin(); i != end();)
+      {
+	if (*i == v)
+	  i = erase(i);
+	else
+	  ++i;
+      }
+  }
+
+  /** Replace item by an other item in this list */
+  static iterator replace(X &out, X &in)
+  {
+    _replace(static_cast<item_type*>(&in),
+	     static_cast<item_type*>(&out));
+    return iterator(in);
+  }
+
+  /** Test if this list is empty */
+  bool empty() const
+  {
+    return m_root.m_next == &m_root;
+  }
+
+  /** Get list item count, takes O(n) */
+  size_type size() const
+  {
+    size_t s = 0;
+
+    for (const_iterator i = begin(); i != end(); ++i)
+      s++;
+
+    return s;
+  }
+
+  /** Get maximum container size */
+  size_type max_size() const
+  {
+    return (size_type)(-1);
+  }
+
+  /** Append all items from the given list to the end of this list */
+  void append(linked_list &list)
+  {
+    if (!list.empty())
+      {
+	list.m_root.m_prev->m_next = &m_root;
+	list.m_root.m_next->m_prev = m_root.m_prev;
+	m_root.m_prev->m_next = list.m_root.m_next;
+	m_root.m_prev = list.m_root.m_prev;
+	list._empty();
+      }
+  }
+
+  /** Append all item from the given list in front of this list */
+  void prepend(linked_list &list)
+  {
+    if (!list.empty())
+      {
+	list.m_root.m_next->m_prev = &m_root;
+	list.m_root.m_prev->m_next = m_root.m_next;
+	m_root.m_next->m_prev = list.m_root.m_prev;
+	m_root.m_next = list.m_root.m_next;
+	list._empty();
+      }
+  }
+
+  /** Merge with specified ordered list according to specified sort predicate */
+  void merge(linked_list &list, _predicate *func)
+  {
+    _rebuild(_merge(m_root.m_next, list.m_root.m_next, func));
+    list._empty();
+  }
+
+  /** Merge with specified ordered list */
+  void merge(linked_list &list)
+  {
+    merge(list, _default_predicate);
+  }
+
+  /** Sort this list according to specified sort predicate */
+  void sort(_predicate *func)
+  {
+    /* Linked list stack based merge sort algorithm by Alexandre Becoulet */
+
+    if (m_root.m_prev == m_root.m_next)
+      return;
+
+    unsigned int n = 0;		/* index of current node pair */
+    linked_list_node *tail = m_root.m_next; /* remaining unprocessed nodes */
+    linked_list_node *stack[41]; /* we are able to sort 2^40 nodes here */
+    linked_list_node **s = stack;
+
+    m_root.m_prev->m_next = 0;
+
+    while (tail)
+      {
+	unsigned int idx, tmp;
+
+	/* Pick 2 nodes */
+	linked_list_node *a = tail;
+	linked_list_node *b = tail->m_next;
+
+	if (!b)
+	  {
+	    *s++ = a;
+	    break;
+	  }
+
+	tail = b->m_next;
+
+	/* Create a sorted pair list and push it on stack */
+
+	if (func(static_cast<X&>(static_cast<item_type &>(*a)),
+	         static_cast<X&>(static_cast<item_type &>(*b))))
+	  ((*s = a)->m_next = b)->m_next = 0;
+	else
+	  ((*s = b)->m_next = a)->m_next = 0;
+
+	s++;
+
+	/* Reduce stack by merging top lists as if we were building a
+	   complete binary tree from leaf nodes. We determine merge
+	   count from bits change in pair index. */
+
+	tmp = n++;
+	for (idx = n ^ tmp; idx &= idx - 1; s--)
+	  s[-2] = _merge(s[-2], s[-1], func);
+      }
+
+    /* Merge all remaining lists */
+
+    while (s-- > stack + 1)
+      s[-1] = _merge(s[-1], s[0], func);
+
+    /* rebuild prev links and root */
+
+    _rebuild(stack[0]);
+  }
+
+  /** Sort this list */
+  void sort()
+  {
+    sort(_default_predicate);
+  }
+
+  /** Get first item */
+  X & front() const
+  {
+    return static_cast<X &>(static_cast<item_type &>(*m_root.m_next));
+  }
+
+  /** Get last item */
+  X & back() const
+  {
+    return static_cast<X &>(static_cast<item_type &>(*m_root.m_prev));
+  }
+
+#if 0
+  const X & front() const
+  {
+    return static_cast<X &>(static_cast<item_type &>(*m_root.m_next));
+  }
+
+  const X & back() const
+  {
+    return static_cast<X &>(static_cast<item_type &>(*m_root.m_prev));
+  }
+#endif
+
+  /** Get list begin iterator */
+  iterator begin()
+  {
+    return iterator(m_root.m_next);
+  }
+
+  /** Get list begin const iterator */
+  const_iterator begin() const
+  {
+    return const_iterator(m_root.m_next);
+  }
+
+  /** Get list end iterator */
+  iterator end()
+  {
+    return iterator(&m_root);
+  }
+
+  /** Get list end const iterator */
+  const_iterator end() const
+  {
+    return const_iterator(&m_root);
+  }
+
+  /** Get list begin reverse iterator */
+  reverse_iterator rbegin()
+  {
+    return reverse_iterator(m_root.m_prev);
+  }
+
+  /** Get list begin reverse const iterator */
+  const_reverse_iterator rbegin() const
+  {
+    return const_reverse_iterator(m_root.m_prev);
+  }
+
+  /** Get list end reverse iterator */
+  reverse_iterator rend()
+  {
+    return reverse_iterator(&m_root);
+  }
+
+  /** Get list end reverse const iterator */
+  const_reverse_iterator rend() const
+  {
+    return const_reverse_iterator(&m_root);
+  }
+
+  /** Clear this list and push a single item */
+  linked_list & operator=(X &i)
+  {
+    clear();
+    push_back(i);
+    return *this;
+  }
+
+  /** Push an item at the end of this list */
+  linked_list & operator+=(X &i)
+  {
+    push_back(i);
+    return *this;
+  }
+
+  /** Remove an item from this list */
+  linked_list & operator-=(X &i)
+  {
+    _remove(static_cast<item_type*>(&i));
+    return *this;
+  }
+};
+
+//////////////////////////////////////////////////////////////////////
+//	linked_list item class
+//////////////////////////////////////////////////////////////////////
+
+/** Linked list item class.
+
+Classes may inherit from this class to become a valid linked list item.
+
+Multiple inheritance with different ids enables items to be part of
+several lists simultaneously.
+
+*/
+
+template <class X, int id, bool smart>
+class linked_list_item : public linked_list_node
+{
+  template <class, int, bool> friend class linked_list;
+  template <class, int, class, class, bool, bool> friend class linked_list_iterator;
+
+public:
+  /** Associated list container type */
+  typedef linked_list<X, id, smart> list_type;
+
+private:
+
+  linked_list_item(linked_list_item *next, linked_list_item *prev)
+    : linked_list_node(next, prev)
+  {
+  }
+
+  void _check_not_orphan() const
+  {
+    assert(linked_list_node::m_next != 0 || !"bad operation, item is not part of a linked_list");
+  }
+
+  void _check_orphan()
+  {
+    if (smart)
+      {
+	if (linked_list_node::m_next != 0)
+	  {
+	    // smartly remove from current container if any
+	    linked_list_node::m_prev->m_next = linked_list_node::m_next;
+	    linked_list_node::m_next->m_prev = linked_list_node::m_prev;
+	  }
+      }
+    else
+      {
+	assert(linked_list_node::m_next == 0 || !"bad operation, item is currently part of a linked_list");
+      }
+  }
+
+  void _set_orphan()
+  {
+    linked_list_node::m_next = 0;
+  }
+
+public:
+  typedef linked_list_iterator<X, id, linked_list_node, X, true, smart> iterator;
+  typedef linked_list_iterator<X, id, const linked_list_node, const X, true, smart> const_iterator;
+
+  /** Construct a list item */
+  linked_list_item()
+  {
+    _set_orphan();
+  }
+
+  /** Destruct a list item */
+  ~linked_list_item()
+  {
+    _check_orphan();    
+  }
+
+  /** Construct a list item copy */
+  linked_list_item(const linked_list_item &i)
+  {
+    _set_orphan();
+  }
+
+  /** Copy a list item */
+  linked_list_item & operator=(const linked_list_item &i)
+  {
+    // do not change list membership
+    return *this;
+  }
+
+  /** Test if item is not part of a list */
+  bool orphan()
+  {
+    return linked_list_node::m_next == 0;
+  }
+
+  /** Exchange this item with specified item. Both items must
+      be part of a list. Returns an iterator to the replacement
+      item. */
+  iterator swap(X &in)
+  {
+    _check_not_orphan();
+    in._check_not_orphan();
+    list_type::_swap(this, static_cast<linked_list_item*>(&in));
+    return iterator(&in);
+  }
+
+  /** Replace this item in its list by the given orphan
+      item. Returns an iterator to the replacement item. */
+  iterator replace(X &in)
+  {
+    list_type::_replace(this, static_cast<linked_list_item*>(&in));
+    return iterator(&in);
+  }
+
+  /** Remove item from its list */
+  void remove()
+  {
+    list_type::_remove(this);
+  }
+
+  /** Insert an item after this item in the list */
+  void push_back(linked_list_item &i)
+  {
+    _check_not_orphan();
+    list_type::_insert_post(this, static_cast<linked_list_item*>(&i));
+  }
+
+  /** Insert an item before this item in the list */
+  void push_front(linked_list_item &i)
+  {
+    _check_not_orphan();
+    list_type::_insert_pre(this, static_cast<linked_list_item*>(&i));
+  }
+
+  /** Get an iterator to this item in the list */
+  iterator current()
+  {
+    _check_not_orphan();
+    return iterator(this);
+  }
+
+  /** Get a const iterator to this item in the list */
+  const_iterator current() const
+  {
+    _check_not_orphan();
+    return const_iterator(this);
+  }
+
+  /** Get an iterator to the next item in the list */
+  iterator next()
+  {
+    _check_not_orphan();
+    return iterator(linked_list_node::m_next);
+  }
+
+  /** Get a const iterator to the next item in the list */
+  const_iterator next() const
+  {
+    _check_not_orphan();
+    return const_iterator(linked_list_node::m_next);
+  }
+
+  /** Get an iterator to the previous item in the list */
+  iterator prev()
+  {
+    _check_not_orphan();
+    return iterator(linked_list_node::m_prev);
+  }
+
+  /** Get a const iterator to the previous item in the list */
+  const_iterator prev() const
+  {
+    _check_not_orphan();
+    return const_iterator(linked_list_node::m_prev);
+  }
+
+};
+
+}
+
+#endif
+

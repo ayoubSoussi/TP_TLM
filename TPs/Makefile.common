@@ -1,0 +1,101 @@
+# -*- mode: makefile -*-
+.SUFFIXES:
+.SECONDARY:
+SHELL = /bin/sh
+
+AT = @
+
+ifndef SYSTEMCROOT
+   $(error Please set environment variable SYSTEMCROOT)
+endif
+SYSTEMC = $(SYSTEMCROOT)
+
+ifndef ENSITLM
+ENSITLM = $(ROOT)/ensitlm/
+endif
+
+ENSITLM_LIB=$(ENSITLM)/libensitlm.a
+
+CLANG_FORMAT=clang-format-3.7
+
+ifdef WITH_SDL
+ifeq ($(strip $(shell which sdl-config)),)
+   ifeq ($(strip $(shell which sdl2-config)),)
+      $(error SDL library not found)
+   else
+      SDLCFG := sdl2-config
+   endif
+else
+   SDLCFG := sdl-config
+endif
+SDLLIB = $(shell ${SDLCFG} --libs)
+SDLCC = $(shell ${SDLCFG} --cflags)
+else
+SDLLIB =
+SDSCC =
+endif
+
+# guess target os name used by systemc's configure
+# translate it to what SystemC expects.
+ARCH = $(shell uname -m | sed -e 's/x86_64.*/linux64/' -e 's/i.86.*/linux/')
+
+CXX = g++
+CPPFLAGS  = -I$(SYSTEMC)/include 
+CPPFLAGS += -I$(ENSITLM) $(SDLCC)
+CPPFLAGS += -MMD -MP -MF $(basename $@).d
+CXXFLAGS = -O3 -g -Wall -Wextra -Winvalid-pch -Wno-unused-parameter #--std=gnu++11
+# Used when using SDL, hence precompiled header use it, hence we have
+# to use it everywhere if we want PCH support:
+CXXFLAGS += -D_GNU_SOURCE=1 -D_REENTRANT
+
+
+CC = gcc
+CFLAGS = -O3 -g -Wall -Wextra
+
+LD = $(CXX)
+SC_LIB =  -Xlinker -Bstatic -lsystemc -Xlinker -Bdynamic
+LDFLAGS = $(CXXFLAGS)
+LDLIBS = 
+ifdef WITH_X11
+LDLIBS = -L/usr/X11R6/lib -lX11
+endif
+LDLIBS += $(SDLLIB)
+LDLIBS += -L$(SYSTEMC)/lib-$(ARCH) $(SC_LIB) $(ENSITLM_LIB) -pthread
+
+RM = -rm -f
+
+OBJS = $(SRCS:%.cpp=%.o)
+DEPS = $(SRCS:%.cpp=%.d)
+
+.PHONY: $(MODULE)
+$(MODULE): $(TARGET)
+
+.PHONY: clean
+clean:
+	$(RM) *.d *.o $(TARGET)
+
+%.o: %.cpp $(filter-out %.d, $(MAKEFILE_LIST))
+	$(CXX) -c $< -o $@ $(CPPFLAGS) $(CXXFLAGS) $(CXXEXTRAFLAGS)
+
+# "user-friendly" output of make for commands the students may not
+# know:
+.PHONY: $(ENSITLM_LIB)
+$(ENSITLM_LIB):
+	@cd $(ENSITLM) && $(MAKE) ensitlm.h.gch && $(MAKE)
+
+%.a: $(OBJS)
+	@echo "[$(MODULE)] creating static lib $@..."
+	$(AT)ar cr $@ $^
+	$(AT)ranlib $@
+
+%.gch: % $(filter-out %.d, $(MAKEFILE_LIST))
+	@echo "[$(MODULE)] pre-compiling $<..."
+	$(AT)$(RM) $@
+# Create file atomically -> create to .tmp and rename
+	$(AT)$(CXX) -x c++-header -c $* -o $@.tmp $(CPPFLAGS) $(CXXFLAGS) $(CXXEXTRAFLAGS)
+	$(AT)mv $@.tmp $@
+
+%.d: ;
+
+# Include dependency files
+-include $(DEPS)

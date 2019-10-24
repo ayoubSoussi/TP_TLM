@@ -1,0 +1,23 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:elf_file_loader',
+	implementation_files = ['../src/elf_file_loader.cpp',
+			"../libelfpp/src/elfpp_access.cc",
+			"../libelfpp/src/elfpp_object.cc",
+			"../libelfpp/src/elfpp_reloc.cc",
+			"../libelfpp/src/elfpp_section.cc",
+			"../libelfpp/src/elfpp_symbol.cc",
+							],
+	header_files = [
+			"../libelfpp/include/elfpp.hh",
+	],
+	uses = [
+		Uses('common:exception'),
+		Uses('common:loader'),
+		Uses('common:dpp'),
+		],
+)

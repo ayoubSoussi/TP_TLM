@@ -1,0 +1,260 @@
+// -*- c++ -*-
+
+#ifndef DPP_REFS_HH_
+#define DPP_REFS_HH_
+
+#include <iostream>
+#include <cassert>
+
+#define DPP_REFNEW(type, ...)			\
+ (type::ptr(new type(__VA_ARGS__), true))
+
+#define DPP_REFTYPE(type)					\
+ typedef dpp::ref<const type, type> const_ptr;			\
+ typedef dpp::ref<type, type> ptr;
+
+namespace dpp {
+
+  template <class X,	// class with optional constness
+	    class Y = X	// bare class type
+	    >
+  class ref
+  {
+    template <class, class> friend class ref;
+
+  public:
+    ref(const ref<Y, Y> & r)
+      : _obj(r._obj)
+    {
+      if (_obj)
+	ref_inc();
+    }
+
+    template <class T>
+    ref(const ref<T, T> & r)
+      : _obj(r._obj)
+    {
+      if (_obj)
+	ref_inc();
+    }
+
+    ref(const ref<const Y, Y> & r)
+      : _obj(r._obj)
+    {
+      if (_obj)
+	ref_inc();
+    }
+
+    template <class T>
+    ref(const ref<const T, T> & r)
+      : _obj(r._obj)
+    {
+      if (_obj)
+	ref_inc();
+    }
+
+    template <class T>
+    ref<T, T> dynamiccast() const
+    {
+      return ref<T, T>(dynamic_cast<T*>(_obj));
+    }
+
+    template <class T>
+    ref<const T, T> dynamiccast_cst() const
+    {
+      return ref<const T, T>(dynamic_cast<const T*>(_obj));
+    }
+
+    ref & operator=(const ref &r)
+    {
+      if (_obj)
+	ref_drop();
+      _obj = r._obj;
+      if (_obj)
+	ref_inc();
+      return *this;
+    }
+
+    ref(X & obj)
+      : _obj(&obj)
+    {
+      ref_inc();
+    }
+
+    ref & operator=(X & obj)
+    {
+      if (_obj)
+	ref_drop();
+      _obj = &obj;
+      if (_obj)
+	ref_inc();
+      return *this;
+    }
+
+    void invalidate()
+    {
+      if (_obj)
+	ref_drop();
+      _obj = 0;
+    }
+
+    explicit ref(X * obj)
+      : _obj(obj)
+    {
+      if (_obj)
+	ref_inc();
+    }
+
+    ref(X * obj, bool allocated)
+      : _obj(obj)
+    {
+      ref_inc();
+      _obj->_delete_on_0 = allocated;
+    }
+
+    ~ref()
+    {
+      if (_obj)
+	ref_drop();
+    }
+
+#if 1
+    X & operator*() const
+    {
+      return *_obj;
+    }
+#endif
+
+    X * operator->() const
+    {
+      return _obj;
+    }
+
+#if 0
+    operator bool () const
+    {
+      return _obj != 0;
+    }
+#endif
+
+    bool valid() const
+    {
+      return _obj != 0;
+    }
+
+#if 0
+    operator X * () const
+    {
+      return _obj;
+    }
+#endif
+
+    X * ptr() const
+    {
+      return _obj;
+    }
+
+    X & obj() const
+    {
+      return *_obj;
+    }
+
+#if 0
+    operator X & () const
+    {
+      return *_obj;
+    }
+#endif
+
+    int count() const
+    {
+      return _obj ? _obj->_count : 0;
+    }
+
+    bool operator==(const ref &r) const
+    {
+      return _obj == r._obj;
+    }
+
+    bool operator!=(const ref &r) const
+    {
+      return _obj != r._obj;
+    }
+
+    ref()
+      : _obj(0)
+    {
+    }
+
+  protected:
+
+    void ref_inc()
+    {
+      const_cast<Y*>(_obj)->_count++;
+    }
+
+    void ref_drop()
+    {
+      assert(_obj->_count > 0);
+      const_cast<Y*>(_obj)->_count--;
+
+      if (_obj->_count == 0 && _obj->_delete_on_0)
+	delete _obj;
+    }
+
+    X *_obj;
+  };
+
+  template <class X, class Y>
+  inline std::ostream & operator<<(std::ostream &o, const ref<X, Y> &r)
+  {
+    o << "[ref " << r.get_ptr() << " " << r.ref_count() << "]";
+    return o;
+  }
+
+  template <class X>
+  class refobj
+  {
+    template <class, class> friend class ref;
+
+  public:
+
+    DPP_REFTYPE(X)
+
+    refobj()
+      : _count(0),
+	_delete_on_0(false)
+    {
+    }
+
+    refobj(const refobj &r)
+      : _count(0),
+	_delete_on_0(false)
+    {
+    }
+
+    refobj & operator=(const refobj &r)
+    {
+      assert(_count == 0);
+      _count = 0;
+    }
+
+    ~refobj()
+    {
+      assert(_count == 0);
+    }
+
+    int ref_count() const
+    {
+      return _count;
+    }
+
+  protected:
+    int _count;
+    bool _delete_on_0;
+  };
+
+}
+
+#endif
+

@@ -1,0 +1,24 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:loader',
+	classname = 'soclib::common::Loader',
+	header_files = ['../include/loader.h',],
+	implementation_files = ['../src/loader.cpp',
+							],
+	   instance_parameters = [
+	parameter.String('binary', auto = 'env:binary'),
+	],
+	uses = [
+		Uses('common:exception'),
+		Uses('common:binary_file_section'),
+		Uses('common:binary_file_symbol'),
+		],
+	   extensions = [
+	'dsx:configurator',
+	'dsx:noname'
+	]
+)
