@@ -2,7 +2,7 @@ TARGET=run.x
 all: $(TARGET)
 
 SRCS=${wildcard *.cpp}
-ROOT=../..
+ROOT=../
 WITH_X11=YesPlease
 include $(ROOT)/Makefile.common
 
