@@ -19,17 +19,19 @@ ENSITLM_LIB=$(ENSITLM)/libensitlm.a
 CLANG_FORMAT=clang-format-3.7
 
 ifdef WITH_SDL
-ifeq ($(strip $(shell which sdl-config)),)
-   ifeq ($(strip $(shell which sdl2-config)),)
-      $(error SDL library not found)
-   else
-      SDLCFG := sdl2-config
-   endif
-else
-   SDLCFG := sdl-config
-endif
-SDLLIB = $(shell ${SDLCFG} --libs)
-SDLCC = $(shell ${SDLCFG} --cflags)
+#ifeq ($(strip $(shell which sdl-config)),)
+#   ifeq ($(strip $(shell which sdl2-config)),)
+#      $(error SDL library not found)
+#   else
+#      SDLCFG := sdl2-config
+#   endif
+#else
+#   SDLCFG := sdl-config
+#endif
+#SDLLIB = $(shell ${SDLCFG} --libs)
+#SDLCC = $(shell ${SDLCFG} --cflags)
+SDLLIB = $(shell sdl2-config --libs)
+SDLCC = $(shell sdl2-config --cflags)
 else
 SDLLIB =
 SDSCC =

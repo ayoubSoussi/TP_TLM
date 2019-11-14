@@ -6,7 +6,7 @@ SRCS = sc_main_native.cpp native_wrapper.cpp
 
 TARGET = run.x
 
-ROOT=../../..
+ROOT=../..
 WITH_SDL=yesPlease
 include $(ROOT)/Makefile.common
 

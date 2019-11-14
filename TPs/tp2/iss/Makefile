@@ -8,7 +8,7 @@ TARGET = run.x
 
 all: $(TARGET) $(ESOFT_BIN)
 
-ROOT=../../..
+ROOT=../..
 WITH_SDL=yesPlease
 include $(ROOT)/Makefile.common
 

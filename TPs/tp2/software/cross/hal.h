@@ -1,12 +1,12 @@
-/***************************************************************************
- * vim: tw=0: cindent: sw=3: ts=3: sts=3: noet: list                       *
- * Copyright (C) 2009, 2012 by Verimag                                     *
- * Initial author: Matthieu Moy                                            *
- * riscv support : Frédéric Pétrot <frederic.petrot@univ-grenoble-alpes.fr *
- ***************************************************************************/
+/*\
+ * vim: tw=0: cindent: sw=3: ts=3: sts=3: noet: nolist:
+ * Copyright (C) 2009, 2012 by Verimag
+ * Initial author: Matthieu Moy
+ * riscv support : Frédéric Pétrot <frederic.petrot@univ-grenoble-alpes.fr
+\*/
 
 /*\
- * Harwdare Abstraction Layer : implementation for MicroBlaze
+ * Harwdare Abstraction Layer : implementation for risc-v
 \*/
 #ifndef HAL_H
 #define HAL_H
