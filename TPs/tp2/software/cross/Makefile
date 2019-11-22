@@ -27,33 +27,17 @@ dump.dis: $(EXEC)
 sections.txt: $(EXEC)
 	$(TARGET_READELF) -S $< > $@
 
-# START CUT
-$(EXEC): $(OBJS) ldscript
-	$(TARGET_LD) -Tldscript $(OBJS) -o $@
 
-main.o: ../main.c ../../address_map.h \
- ../../hardware/offsets/gpio.h ../../hardware/offsets/timer.h \
- ../../hardware/offsets/vga.h ../../hardware/offsets/uart.h \
- ../../hardware/offsets/intc.h hal.h
-	$(TARGET_CC) $(INCLUDE) -c $< -o $@
-
-trap.o : trap.c
-	$(TARGET_CC) $(INCLUDE) -c $< -o $@
-
-%.o: %.s
-	$(TARGET_CC) -c $<
-# STOP CUT
-
-# UNCOMMENT $(EXEC): # TODO: dependencies
-# UNCOMMENT 	echo "Rule for linking not implemented."; exit 1
+$(EXEC): # TODO: dependencies
+	echo "Rule for linking not implemented."; exit 1
 # TODO: use $(TARGET_LD), and use the -T option to point to linker script ldscript
 
-# UNCOMMENT main.o: # TODO: dependencies
-# UNCOMMENT 	echo "Rule for compilation not implemented"; exit 1
+main.o: # TODO: dependencies
+	echo "Rule for compilation not implemented"; exit 1
 # TODO: compile with target C compiler
 
-# UNCOMMENT %.o: %.s
-# UNCOMMENT 	echo "Rule for assembly not implemented"; exit 1
+%.o: %.s
+	echo "Rule for assembly not implemented"; exit 1
 
 .PHONY: clean realclean
 clean:
