@@ -28,16 +28,21 @@ sections.txt: $(EXEC)
 	$(TARGET_READELF) -S $< > $@
 
 
-$(EXEC): # TODO: dependencies
-	echo "Rule for linking not implemented."; exit 1
-# TODO: use $(TARGET_LD), and use the -T option to point to linker script ldscript
+$(EXEC): ldscript
+	$(TARGET_LD) -T ldscript
 
-main.o: # TODO: dependencies
-	echo "Rule for compilation not implemented"; exit 1
-# TODO: compile with target C compiler
 
+#compiling using the target compiler
+main.o: ../main.c ../../address_map.h \
+	../../hardware/offsets/gpio.h ../../hardware/offsets/timer.h \
+	../../hardware/offsets/vga.h ../../hardware/offsets/uart.h \
+	../../hardware/offsets/intc.h hal.h 
+	$(TARGET_CC) $(INCLUDE) -c $< -o $@
+
+trap.o : trap.c
+	$(TARGET_CC) $(INCLUDE) -c $< -o $@
 %.o: %.s
-	echo "Rule for assembly not implemented"; exit 1
+	$(TARGET_CC) -c $<
 
 .PHONY: clean realclean
 clean:
