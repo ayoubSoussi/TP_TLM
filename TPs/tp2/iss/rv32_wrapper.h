@@ -13,6 +13,8 @@ struct RV32Wrapper : sc_core::sc_module {
 
 	void run_iss(void);
 	/* Add stuff relative to irq handling */
+	void irq_handler(void);
+	int cmpt = 0; /* cycles counter */
 
 	SC_CTOR(RV32Wrapper);
 

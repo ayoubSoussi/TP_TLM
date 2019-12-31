@@ -32,10 +32,20 @@ RV32Wrapper::RV32Wrapper(sc_core::sc_module_name name)
 	SC_THREAD(run_iss);
 	/* The method that is required to forward the interrupts from the SystemC
 	 * environment to the ISS needs to be declared here */
+	SC_THREAD(irq_handler);
+	sensitive << irq;
 }
 
 /* IRQ forwarding method to be defined here */
-
+void RV32Wrapper::irq_handler(void){
+	if (irq == true){
+		m_iss.setIrq(true);
+		/* wait for 5 cycles */
+		cmpt = 0;
+		while(cmpt < 5);
+		m_iss.setIrq(false);
+	}
+}
 void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
                                   uint32_t mem_addr, uint32_t mem_wdata, uint32_t mem_be)
 {
@@ -93,9 +103,7 @@ void RV32Wrapper::run_iss(void)
 				uint32_t localbuf;
 				/* The ISS requested an instruction.
 				 * We have to do the instruction fetch by reading from memory. */
-				// TODO: DELETE THAT COMMENT
-			/*std::cout << hex << "instuction address be : "<< ins_addr 
-         <<"  instuction address in machine : "<< uint32_be_to_machine(ins_addr) << std::endl;*/
+				
 				if (ins_addr%sizeof(ensitlm::addr_t) == 0){
 					socket.read(ins_addr, localbuf);
 					localbuf = uint32_machine_to_be(localbuf);
@@ -117,6 +125,7 @@ void RV32Wrapper::run_iss(void)
 			m_iss.step();
 
 			/* IRQ handling to be done */
+			cmpt++;
 		}
 
 		wait(PERIOD);
