@@ -28,10 +28,6 @@ sections.txt: $(EXEC)
 	$(TARGET_READELF) -S $< > $@
 
 
-$(EXEC): ldscript
-	$(TARGET_LD) -T ldscript
-
-
 #compiling using the target compiler
 main.o: ../main.c ../../address_map.h \
 	../../hardware/offsets/gpio.h ../../hardware/offsets/timer.h \
@@ -43,6 +39,9 @@ trap.o : trap.c
 	$(TARGET_CC) $(INCLUDE) -c $< -o $@
 %.o: %.s
 	$(TARGET_CC) -c $<
+
+$(EXEC): $(OBJS) ldscript
+	$(TARGET_LD) -T ldscript $(OBJS) -o $@
 
 .PHONY: clean realclean
 clean:

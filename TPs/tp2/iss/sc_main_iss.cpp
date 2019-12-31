@@ -28,6 +28,8 @@ int sc_main(int, char **) {
 	Memory inst_ram("inst_ram", INST_RAM_SIZE);
 	Bus bus("bus");
 	TIMER timer("timer", sc_core::sc_time(20, sc_core::SC_NS));
+	// declare the UART peripheral
+	UART uart("uart");
 	Vga vga("vga");
 	Intc intc("intc");
 	Gpio gpio("gpio");
@@ -59,6 +61,8 @@ int sc_main(int, char **) {
 	bus.initiator(inst_ram.target);
 	bus.initiator(vga.target);
 	bus.initiator(timer.target);
+	// uart target
+	bus.initiator(uart.target);
 	bus.initiator(gpio.target);
 	bus.initiator(intc.target);
 
@@ -74,6 +78,8 @@ int sc_main(int, char **) {
 	bus.map(inst_ram.target, INST_RAM_BASEADDR, INST_RAM_SIZE);
 	bus.map(vga.target,      VGA_BASEADDR,      VGA_SIZE);
 	bus.map(gpio.target,     GPIO_BASEADDR,     GPIO_SIZE);
+	// uart address maping
+	bus.map(uart.target, UART_BASEADDR, UART_SIZE);
 	bus.map(timer.target,    TIMER_BASEADDR,    TIMER_SIZE);
 	bus.map(intc.target,     INTC_BASEADDR,     INTC_SIZE);
 

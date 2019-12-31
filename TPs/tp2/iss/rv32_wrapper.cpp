@@ -47,8 +47,9 @@ void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
 	// From what I get, the ISS produces be that is either 0b0001, 0b0011 or 0b1111
 	switch (mem_type) {
 		case iss_t::DATA_READ:
-			/* The ISS requested a data read (content of mem_addr into localbuf). */
-			abort(); // TODO
+			// read data in the address mem_addr
+			socket.read(mem_addr, localbuf);
+			localbuf = uint32_machine_to_be(localbuf);		
 #ifdef DEBUG
 			std::cout << hex << "read    " << setw(10) << localbuf
 						 << " at address " << mem_addr << std::endl;
@@ -56,8 +57,8 @@ void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
 			m_iss.setDataResponse(0, localbuf);
 			break;
 		case iss_t::DATA_WRITE:
-			/* The ISS requested a data write (mem_wdata at mem_addr). */
-			abort(); // TODO
+			// write data in the address mem_addr to the mem_wdata
+			socket.write(mem_addr, uint32_be_to_machine(mem_wdata));
 #ifdef DEBUG
 			std::cout << hex << "wrote   " << setw(10) << mem_wdata
 						 << " at address " << mem_addr << std::endl;
@@ -89,11 +90,18 @@ void RV32Wrapper::run_iss(void)
 			// may be half-word aligned. 
 			// For now assume the rv32im profile
 			if (ins_asked) {
+				uint32_t localbuf;
 				/* The ISS requested an instruction.
 				 * We have to do the instruction fetch by reading from memory. */
-				abort(); // TODO
-				uint32_t localbuf;
+				// TODO: DELETE THAT COMMENT
+			/*std::cout << hex << "instuction address be : "<< ins_addr 
+         <<"  instuction address in machine : "<< uint32_be_to_machine(ins_addr) << std::endl;*/
+				if (ins_addr%sizeof(ensitlm::addr_t) == 0){
+					socket.read(ins_addr, localbuf);
+					localbuf = uint32_machine_to_be(localbuf);
+				}
 				m_iss.setInstruction(0, localbuf);
+
 			}
 
 			bool mem_asked;
