@@ -44,6 +44,9 @@ NativeWrapper::NativeWrapper(sc_core::sc_module_name name) : sc_module(name),
 							     irq("irq")
 {
 	SC_THREAD(compute);
+	SC_METHOD(interrupt_handler_internal);
+	sensitive << irq.pos();
+	interrupt = false;
 }
 
 void NativeWrapper::hal_write32(unsigned int addr, unsigned int data)
@@ -65,26 +68,21 @@ unsigned int NativeWrapper::hal_read32(unsigned int addr)
 	}
 }
 
-void NativeWrapper::hal_cpu_relax()
-{
+void NativeWrapper::hal_cpu_relax(){
 	wait(1, sc_core::SC_MS);
 }
 
-void NativeWrapper::hal_wait_for_irq()
-{
-	if (!interrupt){
-		wait(interrupt_event);
-	}
-	interrupt = false;
+void NativeWrapper::hal_wait_for_irq(){
+	next_trigger(irq.posedge_event());
+	interrupt_event.notify();
 }
 
-void NativeWrapper::compute()
-{
-	main();
+void NativeWrapper::compute(){
+	__start();
 }
 
-void NativeWrapper::interrupt_handler_internal()
-{
+void NativeWrapper::interrupt_handler_internal(){
 	interrupt = true;
 	interrupt_event.notify();
+	interrupt_handler();
 }

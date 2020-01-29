@@ -3,7 +3,7 @@ INCLUDE=-I. -I../../
 CFLAGS=$(INCLUDE) -g
 
 main.o:  ../main.c
-	$(CC) -c ../main.c -o main.o $(CFLAGS) 
+	$(CC) $(INCLUDE) -c $< -o $@ 
 
 .PHONY: clean realclean
 clean:
