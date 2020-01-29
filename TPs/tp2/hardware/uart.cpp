@@ -17,7 +17,6 @@ using namespace std;
 
 tlm::tlm_response_status UART::write(ensitlm::addr_t a, ensitlm::data_t d) {
 	char c = (char)d;
-	std::cout << "stupid address in uart" << hex << a  << std::endl ;
 	switch (a) {
 	case UART_FIFO_WRITE:
 #ifdef DEBUG
