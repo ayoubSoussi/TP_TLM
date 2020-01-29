@@ -21,9 +21,9 @@
 } while (0)
 
 /* HAL primitives for cross-compilation */
-#define hal_read32(a)      *((volatile uint32_t*) a)
-#define hal_write32(a, d)  *((volatile uint32_t*) a) = d
-#define hal_wait_for_irq() if(irq_received = 0) irq_received = 0
+#define hal_read32(a)      *((volatile uint32_t*) (a))
+#define hal_write32(a, d)  *((volatile uint32_t*) (a)) = d
+#define hal_wait_for_irq() (asm("wfi"))
 #define hal_cpu_relax()    
 
 static inline void enable_interrupts(void) {
@@ -32,17 +32,23 @@ static inline void enable_interrupts(void) {
 			"li    t0, 0x800\n"
 			"csrs  mie, t0");
 }
-int idx = 0;
 /* printf and puts are disabled, for now ... */
-#define printf(s) idx = 0;            \
-      while(s[idx] != '\0'){           \
-			hal_write32(UART_BASEADDR + UART_FIFO_WRITE, s[idx]);   \
-			idx++;                 \
-		}      
-#define puts(s) idx=0;            \
-      while(s[idx] != '\0'){           \
-			hal_write32(UART_BASEADDR + UART_FIFO_WRITE, s[idx]);   \
-			idx++;                 \
-		}
+#define printf(s)               \
+{									\
+      int word_cmpt, char_cmpt = 0;  \
+		uint32_t base_addr = ((uint32_t)s) & ~0x3;   \
+		uint32_t word = hal_read32(base_addr);                \
+    	uint32_t character = (word >> 0 * 8) & 0xFF;           \
+    	while (character != '\0') {                                \
+		   hal_write32(UART_BASEADDR + UART_FIFO_WRITE, character); \
+		   char_cmpt++;                                           \
+		   if (char_cmpt > 3) {                                   \
+		     word_cmpt++;                                         \
+		     word = hal_read32(base_addr + 4 * word_cmpt);    \
+		     char_cmpt = 0;                                       \
+      }                                                       \
+      character = (word >> char_cmpt * 8) & 0xFF;         \
+    }                                                         \ 
+}      
 
 #endif /* HAL_H */

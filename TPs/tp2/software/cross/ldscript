@@ -24,5 +24,5 @@ SECTIONS
         } > bram
 
    /* Stack. We have to make sure it's not within the video memory */
-   _stack_top  = 0x40000000;
+   _stack_top  = 0x8001FFFC;
 }

@@ -5,7 +5,7 @@ endif
 # Optimization: do not use -O3 as it generates sb/sh/lh/lhu that the *bus*
 # is not able to handle yet
 # Also, change that so that we can use compressed instructions!
-TARGET_CC = $(CROSS_COMPILE)gcc -g -O2 -march=rv32im -mabi=ilp32
+TARGET_CC = $(CROSS_COMPILE)gcc -g -O0 -march=rv32im -mabi=ilp32
 TARGET_LD = $(CROSS_COMPILE)ld -nostartfiles -m elf32lriscv
 TARGET_OBJDUMP = $(CROSS_COMPILE)objdump
 TARGET_READELF = $(CROSS_COMPILE)readelf
@@ -14,7 +14,7 @@ HOST_LD = ld
 HOST_OBJDUMP = objdump
 HOST_READELF = readelf
 
-INCLUDE = -I. -I../..
+INCLUDE = -I. -I../.. -I/usr/include
 
 OBJS = main.o trap.o it.o boot.o
 EXEC = a.out
@@ -41,7 +41,7 @@ trap.o : trap.c
 	$(TARGET_CC) -c $<
 
 $(EXEC): $(OBJS) ldscript
-	$(TARGET_LD) -T ldscript $(OBJS) -o $@
+	$(TARGET_LD) -Tldscript $(OBJS) -o $@
 
 .PHONY: clean realclean
 clean:

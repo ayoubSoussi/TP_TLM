@@ -45,6 +45,7 @@ struct LCDC : sc_core::sc_module {
 	int color_table[256];
 
 	unsigned long addr_register;
+	unsigned long start_register;
 	unsigned long intr_register;
 
 	bool started;
