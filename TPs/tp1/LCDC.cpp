@@ -25,7 +25,6 @@ LCDC::LCDC(sc_module_name name, const sc_time &display_period)
 
 	// registers initialisation
 	addr_register = 0;
-	start_register = 0;
 	intr_register = 0;
 	started = false;
 
@@ -166,7 +165,6 @@ tlm::tlm_response_status LCDC::write(const ensitlm::addr_t &a,
 	        start_register = d;
 		if (d == 0x00000001){
 		        started = true;
-		        start_event.notify();
 		}
 		break;
 	case LCDC_INT_REG:
@@ -197,7 +195,6 @@ void LCDC::compute() {
 		draw();
 
 		if (intr_register == 0) {
-			cout << name() << ": sending display interrupt" << endl;
 			intr_register = 1;
 			display_intr.write(true);
 		}
