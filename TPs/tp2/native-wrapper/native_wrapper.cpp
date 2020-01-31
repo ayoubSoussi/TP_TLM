@@ -14,19 +14,19 @@ extern "C" int main();
 extern "C" void interrupt_handler();
 
 extern "C" void hal_write32(uint32_t addr, uint32_t data) {
-	NativeWrapper::get_instance()->hal_write32(addr, data);	
+    NativeWrapper::get_instance()->hal_write32(addr, data);
 }
 
 extern "C" unsigned int hal_read32(uint32_t addr) {
-	return NativeWrapper::get_instance()->hal_read32(addr);	
+    return NativeWrapper::get_instance()->hal_read32(addr);
 }
 
 extern "C" void hal_cpu_relax() {
-	NativeWrapper::get_instance()->hal_cpu_relax();	
+    NativeWrapper::get_instance()->hal_cpu_relax();
 }
 
 extern "C" void hal_wait_for_irq() {
-	NativeWrapper::get_instance()->hal_wait_for_irq();	
+    NativeWrapper::get_instance()->hal_wait_for_irq();
 }
 
 /* To keep it simple, the soft wrapper is a singleton, we can
@@ -36,52 +36,52 @@ extern "C" void hal_wait_for_irq() {
 NativeWrapper * NativeWrapper::get_instance() {
 	static NativeWrapper * instance = NULL;
 	if (!instance)
-		instance = new NativeWrapper("native_wrapper");
+        instance = new NativeWrapper("native_wrapper");
 	return instance;
 }
 
 NativeWrapper::NativeWrapper(sc_core::sc_module_name name) : sc_module(name),
-							     irq("irq")
-{
+                                irq("irq") {
 	SC_THREAD(compute);
 	SC_METHOD(interrupt_handler_internal);
 	sensitive << irq.pos();
 	interrupt = false;
 }
 
-void NativeWrapper::hal_write32(unsigned int addr, unsigned int data)
-{
+void NativeWrapper::hal_write32(unsigned int addr, unsigned int data) {
 	tlm::tlm_response_status status = socket.write(addr, data);
-	if (!(status == tlm::TLM_OK_RESPONSE)){
-		abort(); // Il y avait une erreur d'écriture
+	if (status != tlm::TLM_OK_RESPONSE) {
+		std::cerr << "Write error in address " << hex << addr << std::endl
+		          << "Response status " << status << std::endl;
+			}
 	}
 }
-unsigned int NativeWrapper::hal_read32(unsigned int addr)
-{
+unsigned int NativeWrapper::hal_read32(unsigned int addr) {
 	unsigned int data;
 	tlm::tlm_response_status status = socket.read(addr, data);
-	if (status == tlm::TLM_OK_RESPONSE){ // Lecture avec succés
+	if (status == tlm::TLM_OK_RESPONSE){
 		return data;
 	}
 	else{
-		abort();
+		std::cerr << "Read error in address " << hex << addr << std::endl
+		          << "Response status " << status << std::endl;
 	}
 }
 
-void NativeWrapper::hal_cpu_relax(){
+void NativeWrapper::hal_cpu_relax() {
 	wait(1, sc_core::SC_MS);
 }
 
-void NativeWrapper::hal_wait_for_irq(){
+void NativeWrapper::hal_wait_for_irq() {
 	next_trigger(irq.posedge_event());
 	interrupt_event.notify();
 }
 
-void NativeWrapper::compute(){
+void NativeWrapper::compute() {
 	__start();
 }
 
-void NativeWrapper::interrupt_handler_internal(){
+void NativeWrapper::interrupt_handler_internal() {
 	interrupt = true;
 	interrupt_event.notify();
 	interrupt_handler();
