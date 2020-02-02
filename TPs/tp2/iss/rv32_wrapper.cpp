@@ -31,32 +31,30 @@ RV32Wrapper::RV32Wrapper(sc_core::sc_module_name name)
 	m_iss.setIrq(false);
 	SC_THREAD(run_iss);
 	/* The method that is required to forward the interrupts from the SystemC
-	 * environment to the ISS needs to be declared here */
+	 * environment to the ISS */
 	cmpt = 3;
 	SC_METHOD(irq_handler);
 	sensitive << irq;
 }
 
-/* IRQ forwarding method to be defined here */
+
 void RV32Wrapper::irq_handler(void){
 	m_iss.setIrq(true);
 	cmpt = 0;
 }
 void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
-                                  uint32_t mem_addr, uint32_t mem_wdata, uint32_t mem_be)
+                                    uint32_t mem_addr, uint32_t mem_wdata, uint32_t mem_be)
 {
 	uint32_t localbuf;
 	int      shift;
 	tlm::tlm_response_status status;
 
-	// FIXME: No byte_enable yet in the tlm bus, assume aligned on the lsb lanes
-	// From what I get, the ISS produces be that is either 0b0001, 0b0011 or 0b1111
 	switch (mem_type) {
-		case iss_t::DATA_READ:
-			// read data in the address mem_addr
+    case iss_t::DATA_READ:
+			// read data in the address mem_addr (The ISS requested a data read)
 			status = socket.read(mem_addr, localbuf);
 			if (status != tlm::TLM_OK_RESPONSE ){
-				std::cerr << "Read error in address " << hex << mem_addr << std::endl;
+                std::cerr << "Read error in address " << hex << mem_addr << std::endl;
 			}
 #ifdef DEBUG
 			std::cout << hex << "read    " << setw(10) << localbuf
@@ -65,7 +63,7 @@ void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
 			m_iss.setDataResponse(0, localbuf);
 			break;
 		case iss_t::DATA_WRITE:
-			// write data in the address mem_addr to the mem_wdata
+			// write data in the address mem_addr to the mem_wdata (The ISS requested a data write)
 			status = socket.write(mem_addr, mem_wdata);
 			if (status != tlm::TLM_OK_RESPONSE ){
 				std::cerr << "Write error in address " << hex << mem_addr << std::endl;
@@ -85,10 +83,7 @@ void RV32Wrapper::exec_data_request(enum iss_t::DataOperationType mem_type,
 	}
 }
 
-void RV32Wrapper::run_iss(void)
-{
-	int inst_count = 0;
-
+void RV32Wrapper::run_iss(void){
 	while (true) {
 		if (m_iss.isBusy())
 			m_iss.nullStep();
@@ -98,9 +93,6 @@ void RV32Wrapper::run_iss(void)
 			tlm::tlm_response_status status;
 			m_iss.getInstructionRequest(ins_asked, ins_addr);
 
-			// FIXME: riscv accepts compressed instructions, thus instructions
-			// may be half-word aligned. 
-			// For now assume the rv32im profile
 			if (ins_asked) {
 				uint32_t localbuf;
 				/* The ISS requested an instruction.
@@ -111,7 +103,6 @@ void RV32Wrapper::run_iss(void)
 				std::cerr << "Fetch error in address " << hex << ins_addr << std::endl;
 				}
 				m_iss.setInstruction(0, localbuf);
-
 			}
 
 			bool mem_asked;
@@ -126,7 +117,7 @@ void RV32Wrapper::run_iss(void)
 			}
 			m_iss.step();
 
-			/* IRQ handling to be done */
+			/* IRQ handling */
 			cmpt++;
 			if (cmpt > 3) m_iss.setIrq(false);
 		}
