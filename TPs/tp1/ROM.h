@@ -3,8 +3,6 @@
 
 #include "ensitlm.h"
 
-#define ROM_SIZE (320 * 240 / 2)
-
 struct ROM : public sc_core::sc_module {
 	ensitlm::target_socket<ROM> socket;
 	ensitlm::data_t *content;

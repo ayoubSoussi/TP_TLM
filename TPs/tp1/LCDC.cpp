@@ -162,10 +162,9 @@ tlm::tlm_response_status LCDC::write(const ensitlm::addr_t &a,
 		addr_register = d;
 		break;
 	case LCDC_START_REG:
-	        start_register = d;
-		if (d == 0x00000001){
-		        started = true;
-		}
+    start_register = d;
+		if (d == 0x00000001)
+      started = true;
 		break;
 	case LCDC_INT_REG:
 		intr_register = d;
