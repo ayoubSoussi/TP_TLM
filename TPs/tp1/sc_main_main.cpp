@@ -17,14 +17,14 @@
 using namespace std;
 using namespace sc_core;
 
-int sc_main(int argc, char **argv){
-        // Add 3 registers of 4 bytes each to the memory
+int sc_main(int argc, char **argv) {
+	// Add 3 registers of 4 bytes each to the memory
 	generator Generator("Generateur");
 	memory Memory("memoire",MEMORY_SIZE);
 	ROM rom("rom");
 	Bus bus("Bus");
   LCDC lcdc("ControllerLCDC", sc_time(1.0/25, SC_SEC));
-	sc_signal<bool> s("s");
+	sc_signal<bool, SC_MANY_WRITERS> irq_signal("IRQ");
 
 	// Addresses mapping
 	bus.map(lcdc.target_socket,LCD_REG_START,LCD_REG_SIZE);
@@ -38,8 +38,8 @@ int sc_main(int argc, char **argv){
 	bus.initiator(rom.socket);
 	bus.initiator(lcdc.target_socket);
 	// binding the interruption ports
-	lcdc.display_intr.bind(s);
-	Generator.display_intr_in.bind(s);
+	lcdc.display_intr(irq_signal);
+	Generator.display_intr_in(irq_signal);
 
 	sc_start();
 
